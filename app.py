@@ -17,20 +17,25 @@ def home():
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.json
-    print(" Webhook data received:", data)
+    print("✅ Webhook data received:", data)
 
-    action_type = data.get("action_type")
+    # Extract info from real GitHub payload
+    author = data.get("head_commit", {}).get("author", {}).get("name", "unknown")
+    to_branch = data.get("ref", "").split("/")[-1]  # e.g. refs/heads/main → main
+
     payload = {
-        "request_id": data.get("request_id"),
-        "author": data.get("author"),
-        "action": action_type,
-        "from_branch": data.get("from_branch"),
-        "to_branch": data.get("to_branch"),
+        "request_id": data.get("after", ""),  # commit hash
+        "author": author,
+        "action": "PUSH",
+        "from_branch": "",  # Not available in push event
+        "to_branch": to_branch,
         "timestamp": datetime.utcnow().strftime("%d %B %Y - %I:%M %p UTC")
     }
+
     events.insert_one(payload)
-    print(" Event stored:", payload)
+    print("✅ Event stored:", payload)
     return jsonify({"msg": "Event stored"}), 200
+
 
 @app.route("/events", methods=["GET"])
 def get_events():
